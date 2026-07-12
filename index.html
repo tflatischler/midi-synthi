@@ -1,265 +1,577 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="MIDI SYNTHI — a playable synthesizer and drum machine with a recording timeline, built on the Web Audio API.">
+<meta name="theme-color" content="#0a0b10">
 <title>MIDI SYNTHI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎹</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* ════════════════════════════════════════════
+   Design tokens
+   ════════════════════════════════════════════ */
 :root{
-  --bg:#08080f;--sf:#0e0e1c;--sf2:#161630;--brd:#252545;
-  --txt:#d0d0e8;--dim:#505070;
-  --cyan:#00e5ff;--cg:rgba(0,229,255,.25);
-  --pink:#ff2d75;--pg:rgba(255,45,117,.25);
-  --purple:#b44dff;--ppg:rgba(180,77,255,.25);
-  --green:#00ff88;--gg:rgba(0,255,136,.25);
-  --orange:#ff8c00;--og:rgba(255,140,0,.25);
-  --yellow:#ffe600;--yg:rgba(255,230,0,.25);
-  --red:#ff4444;--rg:rgba(255,68,68,.25);
-  --wkey:#e8e8f0;--bkey:#1a1a2a;
-  --lane:14px;
-}
-body{background:var(--bg);color:var(--txt);font-family:'Share Tech Mono',monospace;overflow-x:hidden;touch-action:manipulation}
-.app{max-width:1100px;margin:0 auto;padding:10px}
+  color-scheme:dark;
 
-header{text-align:center;padding:12px 0 6px}
-header h1{font-family:'Orbitron',sans-serif;font-weight:900;font-size:1.8rem;letter-spacing:.25em;
-  background:linear-gradient(135deg,var(--cyan),var(--purple),var(--pink));
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  filter:drop-shadow(0 0 14px var(--cg))}
+  /* Surfaces */
+  --bg:#0a0b10;
+  --surface:#111319;
+  --surface-2:#181b24;
+  --surface-3:#1f2330;
+  --border:#252a38;
+  --border-strong:#333a4e;
+
+  /* Text */
+  --text:#e8eaf2;
+  --text-2:#9aa0b4;
+  --text-3:#5d6377;
+
+  /* Semantic color — color carries meaning, chrome stays neutral */
+  --synth:#22d3ee;
+  --synth-dim:rgba(34,211,238,.14);
+  --drum:#f5a524;
+  --drum-dim:rgba(245,165,36,.14);
+  --rec:#fb4d6d;
+  --rec-dim:rgba(251,77,109,.16);
+  --play:#34d399;
+  --play-dim:rgba(52,211,153,.14);
+
+  /* Keys */
+  --wkey-top:#f5f6fa;
+  --wkey-bot:#dfe2ec;
+  --bkey-top:#242836;
+  --bkey-bot:#14161f;
+
+  /* Shape & type */
+  --radius:14px;
+  --radius-sm:9px;
+  --font-ui:'Inter',system-ui,-apple-system,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,monospace;
+
+  --lane:14px;
+  --focus-ring:0 0 0 2px var(--bg),0 0 0 4px var(--synth);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+
+html{scrollbar-color:var(--border-strong) transparent}
+
+body{
+  background:var(--bg);
+  background-image:
+    radial-gradient(60rem 30rem at 50% -12rem,rgba(34,211,238,.06),transparent 60%),
+    radial-gradient(40rem 24rem at 85% 110%,rgba(245,165,36,.04),transparent 60%);
+  color:var(--text);
+  font-family:var(--font-ui);
+  font-size:15px;
+  line-height:1.5;
+  overflow-x:hidden;
+  touch-action:manipulation;
+  min-height:100dvh;
+}
+
+.app{max-width:1120px;margin:0 auto;padding:0 16px 24px}
+
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:is(button,select,input):focus{outline:none}
+:is(button,select,input):focus-visible{box-shadow:var(--focus-ring)}
+
+/* ════════════════════════════════════════════
+   Top bar
+   ════════════════════════════════════════════ */
+.topbar{
+  position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:12px 0;margin-bottom:16px;
+  background:color-mix(in srgb,var(--bg) 82%,transparent);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand-mark{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--synth),#818cf8);
+  color:#07131a;
+}
+.brand-mark svg{width:18px;height:18px}
+.brand h1{
+  font-size:1rem;font-weight:800;letter-spacing:.14em;
+  text-transform:uppercase;line-height:1.1;
+}
+.brand small{display:block;font-size:.62rem;font-weight:500;letter-spacing:.1em;color:var(--text-3);text-transform:uppercase}
 
 /* Transport */
-.transport{display:flex;flex-wrap:wrap;gap:10px;padding:10px 14px;background:var(--sf);
-  border:1px solid var(--brd);border-radius:10px;margin-bottom:10px;align-items:flex-end}
-.tg{display:flex;flex-direction:column;gap:2px}
-.tg>label{font-size:.55rem;color:var(--dim);letter-spacing:.1em;text-transform:uppercase}
-.tg-row{display:flex;gap:5px}
-.btn{font-family:'Orbitron',sans-serif;font-weight:700;font-size:.6rem;padding:7px 12px;
-  border:2px solid var(--brd);border-radius:6px;background:var(--sf2);color:var(--txt);
-  cursor:pointer;transition:all .1s;letter-spacing:.06em;text-transform:uppercase;user-select:none}
-.btn:hover{border-color:var(--cyan);box-shadow:0 0 8px var(--cg)}
-.btn.on{background:var(--cyan);color:var(--bg);border-color:var(--cyan);box-shadow:0 0 14px var(--cg)}
-.btn.rec-on{background:var(--red);color:#fff;border-color:var(--red);box-shadow:0 0 14px var(--rg);animation:pulse .8s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
-.sep{width:1px;background:var(--brd);align-self:stretch}
-input[type=range]{-webkit-appearance:none;width:80px;height:4px;border-radius:2px;background:var(--sf2);border:1px solid var(--brd);outline:none}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:0 0 5px var(--cg)}
-input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--cyan);cursor:pointer;border:none}
-.rv{font-size:.55rem;color:var(--cyan);font-family:'Orbitron',sans-serif;min-width:30px;text-align:center}
-select{font-family:'Share Tech Mono',monospace;font-size:.7rem;padding:5px 8px;background:var(--sf2);color:var(--txt);
-  border:2px solid var(--brd);border-radius:6px;cursor:pointer;outline:none}
-select:focus{border-color:var(--cyan)}
+.transport{display:flex;gap:6px}
+.t-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 14px;border-radius:var(--radius-sm);
+  background:var(--surface-2);border:1px solid var(--border);
+  font-size:.72rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--text-2);
+  transition:background .12s,border-color .12s,color .12s;
+  user-select:none;
+}
+.t-btn svg{width:11px;height:11px;flex-shrink:0}
+.t-btn:hover{background:var(--surface-3);border-color:var(--border-strong);color:var(--text)}
+.t-btn.on{background:var(--play-dim);border-color:var(--play);color:var(--play)}
+#loopBtn.on{background:var(--synth-dim);border-color:var(--synth);color:var(--synth)}
+.t-btn.rec-on{background:var(--rec-dim);border-color:var(--rec);color:var(--rec);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
 
-/* Timeline */
-.timeline-wrap{background:var(--sf);border:1px solid var(--brd);border-radius:10px;margin-bottom:10px;overflow:hidden}
+/* Master volume */
+.master{display:flex;align-items:center;gap:10px}
+.master label{font-size:.62rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+
+/* ════════════════════════════════════════════
+   Panels & controls
+   ════════════════════════════════════════════ */
+.panel{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  margin-bottom:14px;
+}
+.panel-head{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+}
+.panel-title{
+  font-size:.68rem;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--text-2);
+}
+.panel-body{padding:14px 16px}
+
+.controls-row{display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end}
+
+.ctl{display:flex;flex-direction:column;gap:6px;min-width:0}
+.ctl>label{
+  font-size:.6rem;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-3);
+}
+.ctl-row{display:flex;align-items:center;gap:8px}
+
+.value{
+  font-family:var(--font-mono);font-size:.68rem;font-weight:500;
+  font-variant-numeric:tabular-nums;
+  color:var(--text-2);min-width:52px;text-align:right;
+}
+
+/* Range sliders — filled track */
+input[type=range]{
+  -webkit-appearance:none;appearance:none;
+  width:110px;height:5px;border-radius:99px;
+  --p:50%;--track-fill:var(--synth);
+  background:linear-gradient(to right,var(--track-fill) var(--p),var(--surface-3) var(--p));
+  cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;
+  width:15px;height:15px;border-radius:50%;
+  background:var(--text);border:none;
+  box-shadow:0 1px 4px rgba(0,0,0,.45);
+  transition:transform .1s;
+}
+input[type=range]::-moz-range-thumb{
+  width:15px;height:15px;border-radius:50%;
+  background:var(--text);border:none;
+  box-shadow:0 1px 4px rgba(0,0,0,.45);
+}
+input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.25)}
+
+/* Selects */
+select{
+  font-family:var(--font-mono);font-size:.72rem;
+  padding:8px 30px 8px 10px;
+  background:var(--surface-2)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239aa0b4' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+  color:var(--text);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  cursor:pointer;appearance:none;-webkit-appearance:none;
+  transition:border-color .12s;
+}
+select:hover{border-color:var(--border-strong)}
+
+/* Ghost / danger buttons */
+.btn-ghost{
+  padding:8px 14px;border-radius:var(--radius-sm);
+  border:1px solid var(--border);background:transparent;
+  font-size:.68rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-2);transition:all .12s;user-select:none;
+}
+.btn-ghost:hover{border-color:var(--border-strong);color:var(--text);background:var(--surface-2)}
+.btn-ghost.danger:hover{border-color:var(--rec);color:var(--rec);background:var(--rec-dim)}
+
+/* Chips (presets) */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  padding:7px 14px;border-radius:999px;
+  border:1px solid var(--border);background:var(--surface-2);
+  font-size:.68rem;font-weight:600;letter-spacing:.04em;
+  color:var(--text-2);transition:all .12s;user-select:none;
+}
+.chip:hover{border-color:var(--synth);color:var(--synth);background:var(--synth-dim)}
+.chip:active{transform:scale(.96)}
+
+/* ════════════════════════════════════════════
+   Timeline (piano roll)
+   ════════════════════════════════════════════ */
 .timeline{display:flex;height:300px}
-.tl-labels{width:48px;flex-shrink:0;overflow:hidden;background:var(--sf);border-right:1px solid var(--brd);z-index:2}
-.tl-label{height:var(--lane);display:flex;align-items:center;justify-content:flex-end;padding-right:4px;
-  font-family:'Orbitron',sans-serif;font-size:.4rem;font-weight:700;color:var(--dim);
-  border-bottom:1px solid rgba(255,255,255,.03)}
-.tl-label.white-key{background:rgba(255,255,255,.02)}
-.tl-label.drum-label{color:var(--orange)}
-.tl-label.section-sep{border-top:2px solid var(--brd);margin-top:0}
+.tl-labels{
+  width:52px;flex-shrink:0;overflow:hidden;
+  background:var(--surface);border-right:1px solid var(--border);z-index:2;
+  border-radius:0 0 0 var(--radius);
+}
+.tl-label{
+  height:var(--lane);display:flex;align-items:center;justify-content:flex-end;
+  padding-right:6px;
+  font-family:var(--font-mono);font-size:.5rem;font-weight:500;
+  color:var(--text-3);
+  border-bottom:1px solid rgba(255,255,255,.03);
+}
+.tl-label.white-key{background:rgba(255,255,255,.025)}
+.tl-label.drum-label{color:var(--drum)}
+.tl-label.section-sep{border-top:2px solid var(--border)}
 .tl-scroll{flex:1;overflow:auto;position:relative}
 .tl-grid{position:relative;min-height:100%}
-.tl-note{position:absolute;height:calc(var(--lane) - 2px);border-radius:2px;cursor:pointer;opacity:.85;transition:opacity .1s}
-.tl-note:hover{opacity:1;filter:brightness(1.3)}
-.tl-note.synth{background:var(--cyan);box-shadow:0 0 4px var(--cg)}
-.tl-note.drum{background:var(--orange);box-shadow:0 0 4px var(--og);border-radius:2px}
-.tl-playhead{position:absolute;top:0;width:2px;background:var(--red);z-index:3;pointer-events:none;
-  box-shadow:0 0 8px var(--rg)}
-.tl-bar-num{position:absolute;top:-16px;font-family:'Orbitron',sans-serif;font-size:.45rem;color:var(--dim)}
-.tl-top{height:16px;background:var(--sf);border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:1}
+.tl-note{
+  position:absolute;height:calc(var(--lane) - 2px);
+  border-radius:3px;cursor:pointer;opacity:.9;
+  transition:opacity .1s,filter .1s;
+}
+.tl-note:hover{opacity:1;filter:brightness(1.35)}
+.tl-note.synth{background:var(--synth)}
+.tl-note.drum{background:var(--drum)}
+.tl-playhead{
+  position:absolute;top:0;width:2px;border-radius:1px;
+  background:var(--rec);z-index:3;pointer-events:none;
+  box-shadow:0 0 10px var(--rec-dim);
+}
+.tl-bar-num{
+  position:absolute;top:2px;
+  font-family:var(--font-mono);font-size:.55rem;color:var(--text-3);
+}
 
-/* Mode Toggle */
-.mode-toggle{display:flex;justify-content:center;gap:0;margin-bottom:10px}
-.mode-btn{font-family:'Orbitron',sans-serif;font-weight:700;font-size:.7rem;padding:10px 30px;
-  border:2px solid var(--brd);background:var(--sf);color:var(--dim);cursor:pointer;transition:all .12s;letter-spacing:.1em}
-.mode-btn:first-child{border-radius:8px 0 0 8px}
-.mode-btn:last-child{border-radius:0 8px 8px 0}
-.mode-btn.on{color:var(--bg);font-weight:900}
-.mode-btn.synth-on{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 16px var(--cg)}
-.mode-btn.drum-on{background:var(--orange);border-color:var(--orange);box-shadow:0 0 16px var(--og)}
+/* ════════════════════════════════════════════
+   Mode toggle — segmented control
+   ════════════════════════════════════════════ */
+.mode-toggle{display:flex;justify-content:center;margin-bottom:14px}
+.segment{
+  display:inline-flex;gap:4px;padding:4px;
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+}
+.segment button{
+  padding:9px 32px;border-radius:999px;
+  font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-3);transition:all .15s;user-select:none;
+}
+.segment button:hover{color:var(--text-2)}
+.segment button.synth-on{background:var(--synth);color:#06161c}
+.segment button.drum-on{background:var(--drum);color:#1d1204}
 
-/* Piano Keyboard */
-.keyboard-wrap{background:var(--sf);border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;overflow-x:auto}
-.keyboard{position:relative;display:flex;margin:0 auto;width:fit-content;height:140px;user-select:none}
-.key{position:relative;cursor:pointer;transition:all .06s;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;
-  font-family:'Orbitron',sans-serif;font-weight:700}
-.key.white{width:44px;height:140px;background:linear-gradient(180deg,#d8d8e8,#f0f0f8);
-  border:1px solid #aaa;border-radius:0 0 6px 6px;z-index:1;margin-right:-1px;color:#666;font-size:.5rem}
-.key.white:active,.key.white.pressed{background:linear-gradient(180deg,#b8b8cc,#d0d0dc);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.2),0 0 12px var(--cg)}
-.key.black{width:28px;height:90px;background:linear-gradient(180deg,#0a0a18,#1a1a30);
-  border:1px solid #222;border-radius:0 0 4px 4px;z-index:2;margin-left:-14px;margin-right:-14px;
-  color:transparent;font-size:0;box-shadow:0 3px 6px rgba(0,0,0,.5)}
-.key.black:active,.key.black.pressed{background:linear-gradient(180deg,#1a1a30,#2a2a44);
-  box-shadow:0 1px 3px rgba(0,0,0,.3),0 0 12px var(--ppg)}
+/* ════════════════════════════════════════════
+   Piano keyboard
+   ════════════════════════════════════════════ */
+.keyboard-wrap .panel-body{overflow-x:auto;padding:16px}
+.keyboard{
+  position:relative;display:flex;margin:0 auto;width:fit-content;
+  height:150px;user-select:none;
+}
+.key{
+  position:relative;cursor:pointer;touch-action:none;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;
+  font-family:var(--font-mono);font-size:.58rem;font-weight:600;
+  transition:background .06s,box-shadow .06s;
+}
+.key.white{
+  width:46px;height:150px;
+  background:linear-gradient(180deg,var(--wkey-top),var(--wkey-bot));
+  border:1px solid #b8bccb;border-radius:0 0 7px 7px;
+  z-index:1;margin-right:-1px;color:#7b8093;
+}
+.key.white:is(:active,.pressed){
+  background:linear-gradient(180deg,#c4e9f2,#a8dcea);
+  border-color:var(--synth);color:#0c5a6b;
+  box-shadow:inset 0 2px 8px rgba(0,80,100,.25);
+}
+.key.black{
+  width:28px;height:94px;
+  background:linear-gradient(180deg,var(--bkey-top),var(--bkey-bot));
+  border:1px solid #060810;border-radius:0 0 5px 5px;
+  z-index:2;margin-left:-14px;margin-right:-14px;
+  color:transparent;font-size:0;
+  box-shadow:0 3px 6px rgba(0,0,0,.5);
+}
+.key.black:is(:active,.pressed){
+  background:linear-gradient(180deg,#12495a,#0a2e3a);
+  border-color:var(--synth);
+  box-shadow:0 1px 3px rgba(0,0,0,.35),inset 0 0 10px rgba(34,211,238,.35);
+}
 
-/* Drum Pads */
-.pads-wrap{background:var(--sf);border:1px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px}
-.pads{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:500px;margin:0 auto}
-.pad{aspect-ratio:1.4;border-radius:10px;border:2px solid var(--brd);background:var(--sf2);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-family:'Orbitron',sans-serif;font-weight:700;font-size:.65rem;color:var(--orange);
-  transition:all .06s;user-select:none;letter-spacing:.05em}
-.pad:active,.pad.pressed{background:var(--orange);color:var(--bg);border-color:var(--orange);
-  box-shadow:0 0 20px var(--og);transform:scale(.95)}
+/* ════════════════════════════════════════════
+   Drum pads
+   ════════════════════════════════════════════ */
+.pads{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;max-width:520px;margin:0 auto}
+.pad{
+  aspect-ratio:1.35;border-radius:12px;
+  border:1px solid var(--border);background:var(--surface-2);
+  display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;
+  padding:10px 12px;gap:2px;
+  font-size:.72rem;font-weight:600;letter-spacing:.03em;color:var(--text-2);
+  transition:all .07s;user-select:none;touch-action:none;
+}
+.pad::before{
+  content:'';width:8px;height:8px;border-radius:50%;
+  background:var(--drum);opacity:.4;margin-bottom:auto;
+  transition:opacity .07s,box-shadow .07s;
+}
+.pad:hover{border-color:var(--border-strong);background:var(--surface-3);color:var(--text)}
+.pad:is(:active,.pressed){
+  background:var(--drum);border-color:var(--drum);color:#1d1204;
+  transform:scale(.96);
+}
+.pad:is(:active,.pressed)::before{background:#1d1204;opacity:.7;box-shadow:none}
 
-/* Synth Controls */
-.synth-controls{display:flex;flex-wrap:wrap;gap:10px;padding:10px 14px;background:var(--sf);
-  border:1px solid var(--brd);border-radius:10px;margin-bottom:10px;align-items:flex-end}
-
-/* Visualizer */
-.vis-wrap{background:var(--sf);border:1px solid var(--brd);border-radius:10px;overflow:hidden;margin-bottom:10px}
-.vis{height:60px}
+/* ════════════════════════════════════════════
+   Visualizer & footer
+   ════════════════════════════════════════════ */
+.vis{height:64px}
 canvas{width:100%;height:100%;display:block}
+.panel.vis-panel{overflow:hidden}
 
-/* Hidden */
+footer{
+  text-align:center;padding:16px 0 4px;
+  font-size:.62rem;color:var(--text-3);
+}
+footer kbd{
+  font-family:var(--font-mono);font-size:.58rem;
+  padding:2px 6px;border-radius:5px;
+  background:var(--surface-2);border:1px solid var(--border);
+}
+
 .hidden{display:none!important}
 
-footer{text-align:center;padding:8px 0;font-size:.5rem;color:var(--dim)}
-
+/* ════════════════════════════════════════════
+   Responsive & preferences
+   ════════════════════════════════════════════ */
 @media(max-width:768px){
-  header h1{font-size:1.3rem}
-  .keyboard-wrap{padding:8px}
-  .key.white{width:34px;height:110px}
-  .key.black{width:22px;height:70px;margin-left:-11px;margin-right:-11px}
-  .timeline{height:220px}
-  input[type=range]{width:60px}
+  .topbar{gap:10px}
+  .brand h1{font-size:.88rem}
+  .key.white{width:36px;height:118px}
+  .key.black{width:23px;height:74px;margin-left:-11.5px;margin-right:-11.5px}
+  .timeline{height:230px}
+  input[type=range]{width:88px}
+  .segment button{padding:8px 22px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
 }
 </style>
 </head>
 <body>
 <div class="app">
-<header><h1>MIDI SYNTHI</h1></header>
 
-<div class="transport">
-  <div class="tg"><label>Transport</label>
-    <div class="tg-row">
-      <button class="btn" id="playBtn" onclick="togglePlay()">&#9654; Play</button>
-      <button class="btn" id="stopBtn" onclick="stop()">&#9632; Stop</button>
-      <button class="btn" id="recBtn" onclick="toggleRec()">&#9679; Rec</button>
-      <button class="btn" id="loopBtn" onclick="toggleLoop()">&#8634; Loop</button>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <path d="M3 12h3l2.5-7 4 14 2.5-7h6"/>
+      </svg>
+    </span>
+    <h1>MIDI Synthi<small>Web Audio Workstation</small></h1>
+  </div>
+
+  <div class="transport" role="group" aria-label="Transport">
+    <button class="t-btn" id="playBtn" aria-label="Play">
+      <svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1.5v9l8-4.5z"/></svg>Play
+    </button>
+    <button class="t-btn" id="stopBtn" aria-label="Stop">
+      <svg viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="8" height="8" rx="1"/></svg>Stop
+    </button>
+    <button class="t-btn" id="recBtn" aria-label="Record">
+      <svg viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="6" r="4"/></svg>Rec
+    </button>
+    <button class="t-btn" id="loopBtn" aria-label="Toggle loop" aria-pressed="true">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M2 6a4 4 0 0 1 7-2.6M10 6a4 4 0 0 1-7 2.6"/>
+        <path d="M9 1v2.5H6.5M3 11V8.5h2.5" fill="none"/>
+      </svg>Loop
+    </button>
+  </div>
+
+  <div class="master">
+    <label for="vol">Vol</label>
+    <input type="range" id="vol" min="0" max="100" value="75" aria-label="Master volume">
+    <span class="value" id="volV">75%</span>
+  </div>
+</header>
+
+<!-- Song settings -->
+<section class="panel">
+  <div class="panel-body controls-row">
+    <div class="ctl">
+      <label for="bpm">Tempo</label>
+      <div class="ctl-row">
+        <input type="range" id="bpm" min="40" max="240" value="120">
+        <span class="value" id="bpmV">120 BPM</span>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="bars">Bars</label>
+      <select id="bars">
+        <option value="2">2</option>
+        <option value="4" selected>4</option>
+        <option value="8">8</option>
+        <option value="16">16</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label for="quantize">Quantize</label>
+      <select id="quantize">
+        <option value="0">Off</option>
+        <option value="4">1/4</option>
+        <option value="8">1/8</option>
+        <option value="16" selected>1/16</option>
+        <option value="32">1/32</option>
+      </select>
     </div>
   </div>
-  <div class="sep"></div>
-  <div class="tg"><label>BPM</label>
-    <input type="range" id="bpm" min="40" max="240" value="120" oninput="$('#bpmV').textContent=this.value">
-    <span class="rv" id="bpmV">120</span>
-  </div>
-  <div class="tg"><label>Bars</label>
-    <select id="bars" onchange="setBars(+this.value)">
-      <option value="2">2</option>
-      <option value="4" selected>4</option>
-      <option value="8">8</option>
-      <option value="16">16</option>
-    </select>
-  </div>
-  <div class="tg"><label>Quantize</label>
-    <select id="quantize">
-      <option value="0">Off</option>
-      <option value="4">1/4</option>
-      <option value="8">1/8</option>
-      <option value="16" selected>1/16</option>
-      <option value="32">1/32</option>
-    </select>
-  </div>
-  <div class="sep"></div>
-  <div class="tg"><label>Volume</label>
-    <input type="range" id="vol" min="0" max="100" value="75" oninput="setVol(this.value)">
-    <span class="rv" id="volV">75%</span>
-  </div>
-  <div class="sep"></div>
-  <div class="tg"><label>&nbsp;</label>
-    <button class="btn" onclick="clearTimeline()" style="border-color:var(--pink)">Clear</button>
-  </div>
-</div>
+</section>
 
 <!-- Timeline -->
-<div class="timeline-wrap">
+<section class="panel">
+  <div class="panel-head">
+    <span class="panel-title">Arrangement</span>
+    <button class="btn-ghost danger" id="clearBtn" style="margin-left:auto">Clear</button>
+  </div>
   <div class="timeline">
     <div class="tl-labels" id="tlLabels"></div>
     <div class="tl-scroll" id="tlScroll">
       <div class="tl-grid" id="tlGrid"></div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- Mode Toggle -->
+<!-- Mode toggle -->
 <div class="mode-toggle">
-  <button class="mode-btn synth-on on" id="synthModeBtn" onclick="setMode('synth')">SYNTH</button>
-  <button class="mode-btn" id="drumModeBtn" onclick="setMode('drums')">DRUMS</button>
-</div>
-
-<!-- Piano Keyboard -->
-<div class="keyboard-wrap" id="keyboardWrap">
-  <div class="keyboard" id="keyboard"></div>
-</div>
-
-<!-- Drum Pads -->
-<div class="pads-wrap hidden" id="padsWrap">
-  <div class="pads" id="pads"></div>
-</div>
-
-<!-- Synth Controls -->
-<div class="synth-controls" id="synthControls">
-  <div class="tg"><label>Wave</label>
-    <select id="wave">
-      <option value="sawtooth">Saw</option>
-      <option value="square">Square</option>
-      <option value="sine">Sine</option>
-      <option value="triangle">Tri</option>
-    </select>
-  </div>
-  <div class="tg"><label>Filter</label>
-    <input type="range" id="flt" min="100" max="8000" value="3000" oninput="$('#fltV').textContent=this.value">
-    <span class="rv" id="fltV">3000</span>
-  </div>
-  <div class="tg"><label>Reso</label>
-    <input type="range" id="fltQ" min="0" max="20" value="1" step=".5" oninput="$('#fltQV').textContent=(+this.value).toFixed(1)">
-    <span class="rv" id="fltQV">1.0</span>
-  </div>
-  <div class="tg"><label>Atk</label>
-    <input type="range" id="atk" min="0" max="500" value="5" oninput="$('#atkV').textContent=this.value">
-    <span class="rv" id="atkV">5</span>
-  </div>
-  <div class="tg"><label>Dec</label>
-    <input type="range" id="dec" min="10" max="1000" value="150" oninput="$('#decV').textContent=this.value">
-    <span class="rv" id="decV">150</span>
-  </div>
-  <div class="tg"><label>Sus</label>
-    <input type="range" id="sus" min="0" max="100" value="40" oninput="$('#susV').textContent=this.value+'%'">
-    <span class="rv" id="susV">40%</span>
-  </div>
-  <div class="tg"><label>Rel</label>
-    <input type="range" id="rel" min="10" max="2000" value="200" oninput="$('#relV').textContent=this.value">
-    <span class="rv" id="relV">200</span>
-  </div>
-  <div class="tg"><label>Delay</label>
-    <input type="range" id="dly" min="0" max="80" value="0" oninput="$('#dlyV').textContent=this.value+'%';if(dlyGain)dlyGain.gain.value=this.value/100">
-    <span class="rv" id="dlyV">0%</span>
-  </div>
-  <div class="sep"></div>
-  <div class="tg"><label>Preset</label>
-    <select id="preset" onchange="applyPreset(this.value);this.value=''">
-      <option value="">--</option>
-      <option value="lead">Lead</option>
-      <option value="bass">Bass</option>
-      <option value="pad">Pad</option>
-      <option value="pluck">Pluck</option>
-      <option value="acid">Acid</option>
-      <option value="sub">Sub</option>
-    </select>
+  <div class="segment" role="tablist" aria-label="Instrument">
+    <button id="synthModeBtn" class="synth-on" role="tab" aria-selected="true">Synth</button>
+    <button id="drumModeBtn" role="tab" aria-selected="false">Drums</button>
   </div>
 </div>
 
-<div class="vis-wrap"><div class="vis"><canvas id="visCanvas"></canvas></div></div>
-<footer>MIDI SYNTHI &mdash; Tap &bull; Record &bull; Play</footer>
+<!-- Piano keyboard -->
+<section class="panel keyboard-wrap" id="keyboardWrap">
+  <div class="panel-body">
+    <div class="keyboard" id="keyboard"></div>
+  </div>
+</section>
+
+<!-- Drum pads -->
+<section class="panel hidden" id="padsWrap">
+  <div class="panel-body">
+    <div class="pads" id="pads"></div>
+  </div>
+</section>
+
+<!-- Synth controls -->
+<section class="panel" id="synthControls">
+  <div class="panel-head"><span class="panel-title">Synth Engine</span></div>
+  <div class="panel-body controls-row">
+    <div class="ctl">
+      <label for="wave">Wave</label>
+      <select id="wave">
+        <option value="sawtooth">Saw</option>
+        <option value="square">Square</option>
+        <option value="sine">Sine</option>
+        <option value="triangle">Tri</option>
+      </select>
+    </div>
+    <div class="ctl">
+      <label for="flt">Filter</label>
+      <div class="ctl-row">
+        <input type="range" id="flt" min="100" max="8000" value="3000">
+        <span class="value" id="fltV">3000 Hz</span>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="fltQ">Resonance</label>
+      <div class="ctl-row">
+        <input type="range" id="fltQ" min="0" max="20" value="1" step=".5">
+        <span class="value" id="fltQV">1.0</span>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="atk">Attack</label>
+      <div class="ctl-row">
+        <input type="range" id="atk" min="0" max="500" value="5">
+        <span class="value" id="atkV">5 ms</span>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="dec">Decay</label>
+      <div class="ctl-row">
+        <input type="range" id="dec" min="10" max="1000" value="150">
+        <span class="value" id="decV">150 ms</span>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="sus">Sustain</label>
+      <div class="ctl-row">
+        <input type="range" id="sus" min="0" max="100" value="40">
+        <span class="value" id="susV">40%</span>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="rel">Release</label>
+      <div class="ctl-row">
+        <input type="range" id="rel" min="10" max="2000" value="200">
+        <span class="value" id="relV">200 ms</span>
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="dly">Delay</label>
+      <div class="ctl-row">
+        <input type="range" id="dly" min="0" max="80" value="0">
+        <span class="value" id="dlyV">0%</span>
+      </div>
+    </div>
+    <div class="ctl" style="flex-basis:100%">
+      <label>Presets</label>
+      <div class="chips" id="presetChips">
+        <button class="chip" data-preset="lead">Lead</button>
+        <button class="chip" data-preset="bass">Bass</button>
+        <button class="chip" data-preset="pad">Pad</button>
+        <button class="chip" data-preset="pluck">Pluck</button>
+        <button class="chip" data-preset="acid">Acid</button>
+        <button class="chip" data-preset="sub">Sub</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Visualizer -->
+<section class="panel vis-panel">
+  <div class="vis"><canvas id="visCanvas"></canvas></div>
+</section>
+
+<footer>
+  Tap &middot; Record &middot; Play &nbsp;&mdash;&nbsp;
+  <kbd>Space</kbd> play/stop &nbsp;&middot;&nbsp; <kbd>Z</kbd>&ndash;<kbd>M</kbd> lower octave &nbsp;&middot;&nbsp; <kbd>Q</kbd>&ndash;<kbd>I</kbd> upper octave &nbsp;&middot;&nbsp; <kbd>1</kbd>&ndash;<kbd>4</kbd>/<kbd>Q</kbd>&ndash;<kbd>R</kbd> drums
+</footer>
+
 </div>
 
 <script>
+'use strict';
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 let noteId = 0;
@@ -270,10 +582,9 @@ const noteNames = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 for (let oct = 3; oct <= 4; oct++) {
   for (let i = 0; i < 12; i++) {
     const name = noteNames[i] + oct;
-    const freq = 440 * Math.pow(2, (oct - 4) * 12 + i - 9) / Math.pow(2, 0);
     const midi = (oct + 1) * 12 + i;
-    const realFreq = 440 * Math.pow(2, (midi - 69) / 12);
-    KEYS.push({ name, freq: realFreq, black: noteNames[i].includes('#'), midi });
+    const freq = 440 * Math.pow(2, (midi - 69) / 12);
+    KEYS.push({ name, freq, black: noteNames[i].includes('#'), midi });
   }
 }
 KEYS.push({ name: 'C5', freq: 523.25, black: false, midi: 72 });
@@ -313,10 +624,44 @@ let mode = 'synth';
 let recording = false, playing = false, looping = true;
 let totalBars = 4;
 let recordedNotes = [];
-let activeKeys = {};
 let playStartTime = 0, playOffset = 0;
 let animFrame;
 const PX_PER_BEAT = 50;
+
+// ── Control bindings: label formatting + slider fill ──
+const FORMATTERS = {
+  bpm: v => v + ' BPM',
+  vol: v => v + '%',
+  flt: v => v + ' Hz',
+  fltQ: v => (+v).toFixed(1),
+  atk: v => v + ' ms',
+  dec: v => v + ' ms',
+  sus: v => v + '%',
+  rel: v => v + ' ms',
+  dly: v => v + '%',
+};
+
+function paintRange(el) {
+  const min = +el.min || 0, max = +el.max || 100;
+  el.style.setProperty('--p', ((el.value - min) / (max - min)) * 100 + '%');
+}
+
+function syncControl(id) {
+  const el = $('#' + id);
+  paintRange(el);
+  const label = $('#' + id + 'V');
+  if (label && FORMATTERS[id]) label.textContent = FORMATTERS[id](el.value);
+}
+
+Object.keys(FORMATTERS).forEach(id => {
+  const el = $('#' + id);
+  el.addEventListener('input', () => {
+    syncControl(id);
+    if (id === 'vol' && masterGain) masterGain.gain.value = el.value / 100;
+    if (id === 'dly' && dlyGain) dlyGain.gain.value = el.value / 100;
+  });
+  syncControl(id);
+});
 
 // ── Audio Init ──
 function initAudio() {
@@ -325,13 +670,13 @@ function initAudio() {
   comp = audioCtx.createDynamicsCompressor();
   comp.threshold.value = -18; comp.ratio.value = 6;
   masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.75;
+  masterGain.gain.value = $('#vol').value / 100;
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 2048;
   dlyNode = audioCtx.createDelay(1);
   dlyNode.delayTime.value = 0.33;
   dlyGain = audioCtx.createGain();
-  dlyGain.gain.value = 0;
+  dlyGain.gain.value = $('#dly').value / 100;
   dlyFb = audioCtx.createGain();
   dlyFb.gain.value = 0.35;
   masterGain.connect(comp);
@@ -458,7 +803,6 @@ function totalBeats() { return totalBars * 4; }
 function totalSeconds() { return totalBeats() * 60 / (+$('#bpm').value); }
 function gridWidth() { return totalBeats() * PX_PER_BEAT; }
 function timeToPx(t) { return (t / totalSeconds()) * gridWidth(); }
-function pxToTime(px) { return (px / gridWidth()) * totalSeconds(); }
 
 function quantizeTime(t) {
   const q = +$('#quantize').value;
@@ -519,9 +863,9 @@ function toggleRec() {
 function toggleLoop() {
   looping = !looping;
   $('#loopBtn').classList.toggle('on', looping);
+  $('#loopBtn').setAttribute('aria-pressed', looping);
 }
 
-let scheduledUntil = 0;
 let scheduledIds = new Set();
 
 function schedulePlayback() {
@@ -532,7 +876,6 @@ function schedulePlayback() {
   const ahead = 0.1;
 
   const currentTime = looping ? elapsed % total : elapsed;
-  const futureTime = currentTime + ahead;
 
   if (!looping && currentTime > total) { stop(); return; }
 
@@ -605,8 +948,8 @@ function buildTimeline() {
   const beatW = PX_PER_BEAT;
   const barW = beatW * 4;
   grid.style.backgroundImage =
-    `repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0px, rgba(255,255,255,.08) 1px, transparent 1px, transparent ${barW}px),` +
-    `repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0px, rgba(255,255,255,.03) 1px, transparent 1px, transparent ${beatW}px),` +
+    `repeating-linear-gradient(90deg, rgba(255,255,255,.09) 0px, rgba(255,255,255,.09) 1px, transparent 1px, transparent ${barW}px),` +
+    `repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0px, rgba(255,255,255,.035) 1px, transparent 1px, transparent ${beatW}px),` +
     `repeating-linear-gradient(180deg, rgba(255,255,255,.03) 0px, rgba(255,255,255,.03) 1px, transparent 1px, transparent ${laneH}px)`;
   grid.style.backgroundPositionY = '16px';
 
@@ -615,14 +958,13 @@ function buildTimeline() {
     const num = document.createElement('div');
     num.className = 'tl-bar-num';
     num.style.left = (b * barW + 4) + 'px';
-    num.style.top = '2px';
     num.textContent = (b + 1);
     grid.appendChild(num);
   }
 
   // Labels
   let drumStart = false;
-  lanes.forEach((l, i) => {
+  lanes.forEach(l => {
     const lbl = document.createElement('div');
     lbl.className = 'tl-label';
     if (l.type === 'drum') {
@@ -662,6 +1004,7 @@ function renderNotes() {
     el.style.left = timeToPx(n.time) + 'px';
     el.style.top = (16 + n.lane * laneH + 1) + 'px';
     el.style.width = Math.max(4, timeToPx(n.duration)) + 'px';
+    el.title = 'Click to delete';
     el.onclick = () => {
       recordedNotes = recordedNotes.filter(x => x.id !== n.id);
       renderNotes();
@@ -678,27 +1021,24 @@ function buildKeyboard() {
   const kb = $('#keyboard');
   kb.innerHTML = '';
   KEYS.forEach(k => {
-    const key = document.createElement('div');
+    const key = document.createElement('button');
+    key.type = 'button';
     key.className = 'key ' + (k.black ? 'black' : 'white');
+    key.setAttribute('aria-label', 'Note ' + k.name);
     if (!k.black) key.textContent = k.name.replace(/\d/, '');
     key.dataset.midi = k.midi;
-    key.dataset.freq = k.freq;
-    key.dataset.name = k.name;
 
-    const down = (e) => {
+    key.addEventListener('pointerdown', e => {
       e.preventDefault();
       initAudio();
       key.classList.add('pressed');
       playSynthSound(k.freq);
       recordNote('synth', k);
-    };
-    const up = () => { key.classList.remove('pressed'); };
-
-    key.addEventListener('mousedown', down);
-    key.addEventListener('mouseup', up);
-    key.addEventListener('mouseleave', up);
-    key.addEventListener('touchstart', down, { passive: false });
-    key.addEventListener('touchend', up);
+    });
+    const up = () => key.classList.remove('pressed');
+    key.addEventListener('pointerup', up);
+    key.addEventListener('pointerleave', up);
+    key.addEventListener('pointercancel', up);
     kb.appendChild(key);
   });
 }
@@ -708,22 +1048,21 @@ function buildPads() {
   const pads = $('#pads');
   pads.innerHTML = '';
   DRUMS.forEach(d => {
-    const pad = document.createElement('div');
+    const pad = document.createElement('button');
+    pad.type = 'button';
     pad.className = 'pad';
     pad.textContent = d.name;
+    pad.setAttribute('aria-label', 'Drum ' + d.name);
     pad.dataset.key = d.key;
 
-    const down = (e) => {
+    pad.addEventListener('pointerdown', e => {
       e.preventDefault();
       initAudio();
       pad.classList.add('pressed');
       playDrumSound(d.key);
       recordNote('drum', d);
       setTimeout(() => pad.classList.remove('pressed'), 120);
-    };
-
-    pad.addEventListener('mousedown', down);
-    pad.addEventListener('touchstart', down, { passive: false });
+    });
     pads.appendChild(pad);
   });
 }
@@ -731,29 +1070,21 @@ function buildPads() {
 // ── Mode Toggle ──
 function setMode(m) {
   mode = m;
-  $('#synthModeBtn').className = 'mode-btn' + (m === 'synth' ? ' synth-on on' : '');
-  $('#drumModeBtn').className = 'mode-btn' + (m === 'drums' ? ' drum-on on' : '');
+  $('#synthModeBtn').className = m === 'synth' ? 'synth-on' : '';
+  $('#drumModeBtn').className = m === 'drums' ? 'drum-on' : '';
+  $('#synthModeBtn').setAttribute('aria-selected', m === 'synth');
+  $('#drumModeBtn').setAttribute('aria-selected', m === 'drums');
   $('#keyboardWrap').classList.toggle('hidden', m !== 'synth');
   $('#padsWrap').classList.toggle('hidden', m !== 'drums');
   $('#synthControls').classList.toggle('hidden', m !== 'synth');
 }
 
-// ── Volume ──
-function setVol(v) {
-  $('#volV').textContent = v + '%';
-  if (masterGain) masterGain.gain.value = v / 100;
-}
-
 // ── Presets ──
 function applyPreset(name) {
   const p = PRESETS[name]; if (!p) return;
-  $('#wave').value = p.wave; $('#flt').value = p.flt; $('#fltQ').value = p.q;
-  $('#atk').value = p.atk; $('#dec').value = p.dec; $('#sus').value = p.sus;
-  $('#rel').value = p.rel; $('#dly').value = p.dly;
-  $('#fltV').textContent = p.flt; $('#fltQV').textContent = p.q.toFixed(1);
-  $('#atkV').textContent = p.atk; $('#decV').textContent = p.dec;
-  $('#susV').textContent = p.sus + '%'; $('#relV').textContent = p.rel;
-  $('#dlyV').textContent = p.dly + '%';
+  $('#wave').value = p.wave;
+  const vals = { flt: p.flt, fltQ: p.q, atk: p.atk, dec: p.dec, sus: p.sus, rel: p.rel, dly: p.dly };
+  Object.entries(vals).forEach(([id, v]) => { $('#' + id).value = v; syncControl(id); });
   if (dlyGain) dlyGain.gain.value = p.dly / 100;
 }
 
@@ -781,7 +1112,7 @@ document.addEventListener('keydown', e => {
       const k = KEYS[idx];
       playSynthSound(k.freq);
       recordNote('synth', k);
-      const el = $$(`.key[data-midi="${k.midi}"]`)[0];
+      const el = $(`.key[data-midi="${k.midi}"]`);
       if (el) el.classList.add('pressed');
     }
   } else if (mode === 'drums' && KEY_MAP_DRUMS[e.code] !== undefined) {
@@ -800,7 +1131,7 @@ document.addEventListener('keyup', e => {
   if (mode === 'synth' && KEY_MAP_SYNTH[e.code] !== undefined) {
     const idx = KEY_MAP_SYNTH[e.code];
     if (idx < KEYS.length) {
-      const el = $$(`.key[data-midi="${KEYS[idx].midi}"]`)[0];
+      const el = $(`.key[data-midi="${KEYS[idx].midi}"]`);
       if (el) el.classList.remove('pressed');
     }
   }
@@ -816,19 +1147,33 @@ function initVis() {
   function draw() {
     requestAnimationFrame(draw);
     const W = c.offsetWidth, H = c.offsetHeight;
-    cx.fillStyle = 'rgba(8,8,15,.4)'; cx.fillRect(0,0,W,H);
+    cx.fillStyle = 'rgba(10,11,16,.4)'; cx.fillRect(0,0,W,H);
     if (!analyser) return;
     const buf = analyser.frequencyBinCount;
     const data = new Uint8Array(buf);
     analyser.getByteTimeDomainData(data);
-    cx.lineWidth = 1.5; cx.strokeStyle = '#00e5ff'; cx.shadowBlur = 5; cx.shadowColor = '#00e5ff';
+    cx.lineWidth = 1.5; cx.strokeStyle = '#22d3ee';
     cx.beginPath();
     const sl = W / buf; let x = 0;
     for (let i = 0; i < buf; i++) { const y = (data[i]/128)*H/2; i===0?cx.moveTo(x,y):cx.lineTo(x,y); x+=sl; }
-    cx.lineTo(W, H/2); cx.stroke(); cx.shadowBlur = 0;
+    cx.lineTo(W, H/2); cx.stroke();
   }
   draw();
 }
+
+// ── Wire UI ──
+$('#playBtn').addEventListener('click', togglePlay);
+$('#stopBtn').addEventListener('click', stop);
+$('#recBtn').addEventListener('click', toggleRec);
+$('#loopBtn').addEventListener('click', toggleLoop);
+$('#clearBtn').addEventListener('click', clearTimeline);
+$('#bars').addEventListener('change', e => setBars(+e.target.value));
+$('#synthModeBtn').addEventListener('click', () => setMode('synth'));
+$('#drumModeBtn').addEventListener('click', () => setMode('drums'));
+$('#presetChips').addEventListener('click', e => {
+  const chip = e.target.closest('.chip');
+  if (chip) applyPreset(chip.dataset.preset);
+});
 
 // ── Init ──
 buildKeyboard();
