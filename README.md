@@ -6,7 +6,7 @@ A playable synthesizer and drum machine styled like a hardware MIDI controller, 
 
 ## Features
 
-- **Controller deck** — rotary knobs (drag, scroll, or arrow keys), waveform selector buttons, 4×2 drum pads and a 2-octave keyboard side by side, like a hardware controller
+- **Controller deck** — rotary knobs (drag, scroll, or arrow keys), waveform selector buttons, and two banks of performance pads: 25 note pads (C3–C5, Launchpad-style) and 8 drum pads
 - **Synth** — 2-oscillator engine with detune, lowpass filter + resonance, full ADSR envelope, and a feedback delay
 - **Drums** — 8 synthesized drum sounds (kick, snare, hi-hats, clap, toms, rim)
 - **Recording timeline** — piano-roll arrangement view with quantize (1/4–1/32), loop playback, and adjustable length (2–16 bars)

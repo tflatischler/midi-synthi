@@ -40,12 +40,6 @@
   --play:#34d399;
   --play-dim:rgba(52,211,153,.14);
 
-  /* Keys */
-  --wkey-top:#f5f6fa;
-  --wkey-bot:#dfe2ec;
-  --bkey-top:#242836;
-  --bkey-bot:#14161f;
-
   /* Shape & type */
   --radius:14px;
   --radius-sm:9px;
@@ -74,7 +68,10 @@ body{
   min-height:100dvh;
 }
 
-.app{max-width:1120px;margin:0 auto;padding:0 16px 24px}
+.app{
+  max-width:1120px;margin:0 auto;
+  padding:0 max(16px,env(safe-area-inset-left)) 24px max(16px,env(safe-area-inset-right));
+}
 
 button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
 :is(button,select,input,.knob):focus{outline:none}
@@ -338,64 +335,49 @@ select:hover{border-color:var(--border-strong)}
 .wave-btn:hover{border-color:var(--border-strong);color:var(--text-2)}
 .wave-btn.on{background:var(--synth-dim);border-color:var(--synth);color:var(--synth)}
 
-/* Deck body: pads + keys side by side */
-.deck-body{display:flex;gap:18px;padding:16px;align-items:center;flex-wrap:wrap}
-.pads{display:grid;grid-template-columns:repeat(4,66px);gap:9px;flex-shrink:0}
-.pad{
-  aspect-ratio:1;border-radius:10px;
+/* Deck body: note pads + drum pads side by side */
+.deck-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;padding:16px;align-items:start}
+.pad-group{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pad-group-label{
+  font-size:.6rem;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-3);
+}
+.npads{display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px}
+.pads{display:grid;grid-template-columns:repeat(4,64px);gap:8px}
+
+/* Shared pad base */
+.pad,.npad{
+  aspect-ratio:1.1;border-radius:10px;min-width:0;
   border:1px solid var(--border);background:var(--surface-2);
   display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-end;
   padding:7px 8px;gap:1px;
-  font-size:.56rem;font-weight:600;letter-spacing:.02em;color:var(--text-2);
+  font-size:.58rem;font-weight:600;letter-spacing:.02em;color:var(--text-2);
   transition:all .07s;user-select:none;touch-action:none;
 }
-.pad::before{
-  content:'';width:6px;height:6px;border-radius:50%;
-  background:var(--drum);opacity:.4;margin-bottom:auto;
-  transition:opacity .07s;
+.pad::before,.npad::before{
+  content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0;
+  margin-bottom:auto;transition:opacity .07s;
 }
-.pad:hover{border-color:var(--border-strong);background:var(--surface-3);color:var(--text)}
+.pad:hover,.npad:hover{border-color:var(--border-strong);background:var(--surface-3);color:var(--text)}
+
+/* Drum pads — amber */
+.pad::before{background:var(--drum);opacity:.4}
 .pad:is(:active,.pressed){
   background:var(--drum);border-color:var(--drum);color:#1d1204;
   transform:scale(.95);
 }
 .pad:is(:active,.pressed)::before{background:#1d1204;opacity:.7}
 
-.keyboard-scroll{flex:1;overflow-x:auto;min-width:280px}
-.keyboard{
-  position:relative;display:flex;margin:0 auto;width:fit-content;
-  height:150px;user-select:none;
+/* Note pads — cyan */
+.npad{font-family:var(--font-mono)}
+.npad::before{background:var(--synth);opacity:.35}
+.npad.sharp{background:var(--bg);color:var(--text-3)}
+.npad.sharp:hover{background:var(--surface-2)}
+.npad:is(:active,.pressed){
+  background:var(--synth);border-color:var(--synth);color:#06161c;
+  transform:scale(.95);
 }
-.key{
-  position:relative;cursor:pointer;touch-action:none;
-  display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;
-  font-family:var(--font-mono);font-size:.58rem;font-weight:600;
-  transition:background .06s,box-shadow .06s;
-}
-.key.white{
-  width:42px;height:150px;
-  background:linear-gradient(180deg,var(--wkey-top),var(--wkey-bot));
-  border:1px solid #b8bccb;border-radius:0 0 7px 7px;
-  z-index:1;margin-right:-1px;color:#7b8093;
-}
-.key.white:is(:active,.pressed){
-  background:linear-gradient(180deg,#c4e9f2,#a8dcea);
-  border-color:var(--synth);color:#0c5a6b;
-  box-shadow:inset 0 2px 8px rgba(0,80,100,.25);
-}
-.key.black{
-  width:26px;height:94px;
-  background:linear-gradient(180deg,var(--bkey-top),var(--bkey-bot));
-  border:1px solid #060810;border-radius:0 0 5px 5px;
-  z-index:2;margin-left:-13px;margin-right:-13px;
-  color:transparent;font-size:0;
-  box-shadow:0 3px 6px rgba(0,0,0,.5);
-}
-.key.black:is(:active,.pressed){
-  background:linear-gradient(180deg,#12495a,#0a2e3a);
-  border-color:var(--synth);
-  box-shadow:0 1px 3px rgba(0,0,0,.35),inset 0 0 10px rgba(34,211,238,.35);
-}
+.npad:is(:active,.pressed)::before{background:#06161c;opacity:.7}
 
 /* Presets strip */
 .preset-strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
@@ -436,20 +418,23 @@ footer kbd{
    Responsive & preferences
    ════════════════════════════════════════════ */
 @media(max-width:900px){
-  .deck-body{flex-direction:column;align-items:stretch}
-  .pads{grid-template-columns:repeat(4,1fr);max-width:360px;margin:0 auto}
+  .deck-body{grid-template-columns:minmax(0,1fr)}
+  .pads{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media(max-width:768px){
-  .topbar{gap:10px}
+  .topbar{gap:8px 10px;padding:10px 0}
   .brand h1{font-size:.88rem}
-  .key.white{width:36px;height:118px}
-  .key.black{width:23px;height:74px;margin-left:-11.5px;margin-right:-11.5px}
-  .keyboard{height:118px}
   .timeline{height:230px}
   input[type=range]{width:88px}
-  .knob-row{gap:10px 12px;justify-content:center}
-  .kctl{width:56px}
+  .master{flex:1;min-width:200px}
+  .master input[type=range]{flex:1;width:auto}
+  .panel-head{padding:11px 14px}
+  .panel-body,.deck-body{padding:12px 14px}
+  .knob-row{gap:10px 8px;justify-content:space-between;padding:14px 12px}
+  .kctl{width:54px}
   .knob{width:48px;height:48px}
+  .npads{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .preset-strip{padding:12px 14px}
 }
 
 @media(prefers-reduced-motion:reduce){
@@ -589,11 +574,15 @@ footer kbd{
     <!-- knobs injected here -->
   </div>
 
-  <!-- Pads + keyboard -->
+  <!-- Note pads + drum pads -->
   <div class="deck-body">
-    <div class="pads" id="pads"></div>
-    <div class="keyboard-scroll">
-      <div class="keyboard" id="keyboard"></div>
+    <div class="pad-group">
+      <span class="pad-group-label">Notes</span>
+      <div class="npads" id="npads"></div>
+    </div>
+    <div class="pad-group">
+      <span class="pad-group-label">Drums</span>
+      <div class="pads" id="pads"></div>
     </div>
   </div>
 
@@ -1276,30 +1265,30 @@ function renderNotes() {
 function clearTimeline() { recordedNotes = []; renderNotes(); }
 function setBars(n) { totalBars = n; buildTimeline(); }
 
-// ── Build Keyboard ──
-function buildKeyboard() {
-  const kb = $('#keyboard');
-  kb.innerHTML = '';
+// ── Build Note Pads ──
+function buildNotePads() {
+  const grid = $('#npads');
+  grid.innerHTML = '';
   KEYS.forEach(k => {
-    const key = document.createElement('button');
-    key.type = 'button';
-    key.className = 'key ' + (k.black ? 'black' : 'white');
-    key.setAttribute('aria-label', 'Note ' + k.name);
-    if (!k.black) key.textContent = k.name.replace(/\d/, '');
-    key.dataset.midi = k.midi;
+    const pad = document.createElement('button');
+    pad.type = 'button';
+    pad.className = 'npad' + (k.black ? ' sharp' : '');
+    pad.setAttribute('aria-label', 'Note ' + k.name);
+    pad.textContent = k.name;
+    pad.dataset.midi = k.midi;
 
-    key.addEventListener('pointerdown', e => {
+    pad.addEventListener('pointerdown', e => {
       e.preventDefault();
       initAudio();
-      key.classList.add('pressed');
+      pad.classList.add('pressed');
       playSynthSound(k.freq);
       recordNote('synth', k);
     });
-    const up = () => key.classList.remove('pressed');
-    key.addEventListener('pointerup', up);
-    key.addEventListener('pointerleave', up);
-    key.addEventListener('pointercancel', up);
-    kb.appendChild(key);
+    const up = () => pad.classList.remove('pressed');
+    pad.addEventListener('pointerup', up);
+    pad.addEventListener('pointerleave', up);
+    pad.addEventListener('pointercancel', up);
+    grid.appendChild(pad);
   });
 }
 
@@ -1392,7 +1381,7 @@ document.addEventListener('keydown', e => {
       const k = KEYS[idx];
       playSynthSound(k.freq);
       recordNote('synth', k);
-      const el = $(`.key[data-midi="${k.midi}"]`);
+      const el = $(`.npad[data-midi="${k.midi}"]`);
       if (el) el.classList.add('pressed');
     }
   } else if (kbdMode === 'drums' && KEY_MAP_DRUMS[e.code] !== undefined) {
@@ -1411,7 +1400,7 @@ document.addEventListener('keyup', e => {
   if (kbdMode === 'synth' && KEY_MAP_SYNTH[e.code] !== undefined) {
     const idx = KEY_MAP_SYNTH[e.code];
     if (idx < KEYS.length) {
-      const el = $(`.key[data-midi="${KEYS[idx].midi}"]`);
+      const el = $(`.npad[data-midi="${KEYS[idx].midi}"]`);
       if (el) el.classList.remove('pressed');
     }
   }
@@ -1459,7 +1448,7 @@ $('#presetChips').addEventListener('click', e => {
 });
 
 // ── Init ──
-buildKeyboard();
+buildNotePads();
 buildPads();
 buildTimeline();
 initVis();
