@@ -380,11 +380,15 @@ select:hover{border-color:var(--border-strong)}
 .npad:is(:active,.pressed)::before{background:#06161c;opacity:.7}
 
 /* Presets strip */
-.preset-strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:12px 16px;border-top:1px solid var(--border)}
-.preset-strip>label{
+.preset-strip{display:flex;flex-direction:column;gap:10px;padding:12px 16px;border-top:1px solid var(--border)}
+.preset-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.preset-row>label{
   font-size:.6rem;font-weight:600;letter-spacing:.12em;
   text-transform:uppercase;color:var(--text-3);margin-right:6px;
 }
+
+/* Phantogram-inspired chips — violet */
+.chip.pg:hover{border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,.14)}
 
 /* ════════════════════════════════════════════
    Visualizer, toast & footer
@@ -588,23 +592,34 @@ footer kbd{
 
   <!-- Presets -->
   <div class="preset-strip" id="presetChips">
-    <label>Presets</label>
-    <button class="chip" data-preset="lead">Lead</button>
-    <button class="chip" data-preset="bass">Bass</button>
-    <button class="chip" data-preset="pad">Pad</button>
-    <button class="chip" data-preset="pluck">Pluck</button>
-    <button class="chip" data-preset="acid">Acid</button>
-    <button class="chip" data-preset="sub">Sub</button>
-    <button class="chip dice" id="diceBtn" aria-label="Roll a random preset">
-      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
-        <rect x="1" y="1" width="12" height="12" rx="2.5"/>
-        <circle cx="4.5" cy="4.5" r=".9" fill="currentColor" stroke="none"/>
-        <circle cx="9.5" cy="4.5" r=".9" fill="currentColor" stroke="none"/>
-        <circle cx="7" cy="7" r=".9" fill="currentColor" stroke="none"/>
-        <circle cx="4.5" cy="9.5" r=".9" fill="currentColor" stroke="none"/>
-        <circle cx="9.5" cy="9.5" r=".9" fill="currentColor" stroke="none"/>
-      </svg>Roll the dice
-    </button>
+    <div class="preset-row">
+      <label>Presets</label>
+      <button class="chip" data-preset="lead">Lead</button>
+      <button class="chip" data-preset="bass">Bass</button>
+      <button class="chip" data-preset="pad">Pad</button>
+      <button class="chip" data-preset="pluck">Pluck</button>
+      <button class="chip" data-preset="acid">Acid</button>
+      <button class="chip" data-preset="sub">Sub</button>
+      <button class="chip dice" id="diceBtn" aria-label="Roll a random preset">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="1" y="1" width="12" height="12" rx="2.5"/>
+          <circle cx="4.5" cy="4.5" r=".9" fill="currentColor" stroke="none"/>
+          <circle cx="9.5" cy="4.5" r=".9" fill="currentColor" stroke="none"/>
+          <circle cx="7" cy="7" r=".9" fill="currentColor" stroke="none"/>
+          <circle cx="4.5" cy="9.5" r=".9" fill="currentColor" stroke="none"/>
+          <circle cx="9.5" cy="9.5" r=".9" fill="currentColor" stroke="none"/>
+        </svg>Roll the dice
+      </button>
+    </div>
+    <div class="preset-row">
+      <label>Phantogram</label>
+      <button class="chip pg" data-preset="blackoutDays">Black Out Days</button>
+      <button class="chip pg" data-preset="whenImSmall">When I'm Small</button>
+      <button class="chip pg" data-preset="fallInLove">Fall in Love</button>
+      <button class="chip pg" data-preset="diamonds">Mouthful of Diamonds</button>
+      <button class="chip pg" data-preset="dontMove">Don't Move</button>
+      <button class="chip pg" data-preset="getMeHigh">Get Me High</button>
+    </div>
   </div>
 </section>
 
@@ -662,6 +677,14 @@ const PRESETS = {
   pluck:{wave:'triangle',flt:5000,q:3,atk:2,dec:80,sus:0,rel:150,dly:20},
   acid:{wave:'sawtooth',flt:600,q:18,atk:2,dec:120,sus:0,rel:50,dly:10},
   sub:{wave:'sine',flt:400,q:0,atk:10,dec:300,sus:60,rel:200,dly:0},
+
+  // Phantogram-inspired patches — dark, hazy electro-pop
+  blackoutDays:{wave:'square',flt:2400,q:3,atk:15,dec:260,sus:50,rel:350,dly:55},   // haunting echo-chop lead
+  whenImSmall:{wave:'sawtooth',flt:650,q:7,atk:2,dec:200,sus:55,rel:120,dly:8},     // gritty growling bass hook
+  fallInLove:{wave:'sawtooth',flt:3200,q:1,atk:90,dec:350,sus:55,rel:700,dly:30},   // lush cinematic string stab
+  diamonds:{wave:'sawtooth',flt:5800,q:2,atk:180,dec:450,sus:65,rel:1100,dly:55},   // glittering airy shimmer
+  dontMove:{wave:'square',flt:2800,q:5,atk:2,dec:90,sus:10,rel:90,dly:20},          // tight punchy horn stab
+  getMeHigh:{wave:'sawtooth',flt:1600,q:9,atk:3,dec:150,sus:70,rel:160,dly:25},     // buzzy overdriven lead
 };
 
 // ── Lane Mapping ──
@@ -1444,7 +1467,11 @@ $('#synthModeBtn').addEventListener('click', () => setKbdMode('synth'));
 $('#drumModeBtn').addEventListener('click', () => setKbdMode('drums'));
 $('#presetChips').addEventListener('click', e => {
   const chip = e.target.closest('.chip[data-preset]');
-  if (chip) applyPreset(chip.dataset.preset);
+  if (!chip) return;
+  applyPreset(chip.dataset.preset);
+  initAudio();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  playSynthSound(261.63); // preview with C4
 });
 
 // ── Init ──
