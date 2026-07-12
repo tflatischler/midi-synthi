@@ -12,6 +12,7 @@ A playable synthesizer and drum machine styled like a hardware MIDI controller, 
 - **Recording timeline** — piano-roll arrangement view with quantize (1/4–1/32), loop playback, and adjustable length (2–16 bars)
 - **Export** — download your arrangement as a **.mid** file (Standard MIDI File, GM drum mapping) or render it offline to **.wav**
 - **Presets** — Lead, Bass, Pad, Pluck, Acid, Sub — plus a 🎲 **dice roller** that generates a random patch and previews it
+- **Phantogram presets** — six patches inspired by Phantogram songs: Black Out Days, When I'm Small, Fall in Love, Mouthful of Diamonds, Don't Move, Get Me High
 - **Oscilloscope** — live waveform visualizer
 - Works with mouse, touch, and computer keyboard
 
